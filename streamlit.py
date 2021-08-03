@@ -35,7 +35,7 @@ X = scale.transform(X)
 # Display the dataset
 with st.beta_expander("Data Frame Preview"):
     st.dataframe(df_data.loc[36:46, :].set_index("name"))
-    st.write("See the [CSV](https://github.com/meganjacob/CodeDay-Labs-Web-App/blob/main/web-application/parkinsons.csv) file")
+    st.write("See the [CSV](https://github.com/meganjacob/CodeDay-Labs-Web-App/blob/main/parkinsons.csv) file")
 
 # Parameter descriptions
 st.subheader("**Parameter Descriptions**")
