@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-from scipy import stats
+import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from PIL import Image
@@ -16,7 +16,7 @@ st.image(img, use_column_width=True)
 # Title and description
 st.title("Parkinson's Disease Web App")
 st.write("***")
-st.write("This app builds various Machiene Learning models and predicts the **Parkinsons's disease**.")
+st.write("This app builds various Machine Learning models and predicts the **Parkinsons's disease**.")
 
 # Load the dataset
 df_data = pd.read_csv("parkinsons.csv")
@@ -28,11 +28,13 @@ X = df_data.drop(columns=["name", "status"]).values
 y = df_data["status"]
 status = {0: "Parkinson's Negative", 1: "Parkinson's Positive"}
 
-X = StandardScaler().fit_transform(X)
+scale = StandardScaler()
+scale.fit(X)
+X = scale.transform(X)
 
 # Display the dataset
 with st.beta_expander("Data Frame Preview"):
-    st.dataframe(df_data.loc[40:50, :].set_index("name"))
+    st.dataframe(df_data.loc[36:46, :].set_index("name"))
 
 # Parameter descriptions
 st.subheader("**Parameter Descriptions**")
@@ -46,9 +48,17 @@ st.markdown("""
     """)
 st.write("***")
 
+# Display the heatmap
+with st.beta_expander("Intercorrelation Heatmap"):
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax = sns.heatmap(df_data.set_index("name").corr(),
+                     fmt='.2f', annot=True, cmap="YlGnBu")
+    st.pyplot(fig)
+
+st.write("***")
 st.subheader("**Mean Values of Each Column**")
 st.dataframe(df_data.groupby("status").mean())
-
+st.write("***")
 
 # Sidebar Organization
 sidebar_col1, sidebar_col2, sidebar_col3 = st.sidebar.beta_columns(3)
@@ -61,9 +71,6 @@ with sidebar_col1:
 
 
 def user_input_features():
-    model = st.sidebar.selectbox("Machiene Learning Model", [
-        "SupportVectorClassifier", "LogisticRegressionClassifier", "DecisionTreeClassifier", "RandomForestClassifier", "KNeighborsClassifier", "NeuralNetwork", "VotingClassifier"])
-    st.sidebar.write("Features")
     MDVP_Fo_Hz = st.sidebar.number_input(
         'MDVP:Fo(Hz)', min_value=80.0, max_value=280.0, value=154.2286, format="%.4f", step=0.01)
     RPDE = st.sidebar.number_input(
@@ -75,8 +82,7 @@ def user_input_features():
     spread2 = st.sidebar.number_input(
         'spread2', min_value=0.0, max_value=0.6, value=0.2265, format="%.4f", step=0.01)
 
-    data = {'Model': model,
-            'MDVP:Fo(Hz)': MDVP_Fo_Hz,
+    data = {'MDVP:Fo(Hz)': MDVP_Fo_Hz,
             'RPDE': RPDE,
             'DFA': DFA,
             'PPE': PPE,
@@ -95,47 +101,40 @@ with sidebar_col3:
 
 # Only when user confirms the changes
 if changes:
-    model = df.loc[0, "Model"]
-    df.drop(columns=["Model"], axis=1, inplace=True)
-    df = StandardScaler().fit_transform(df)
-    df = df.reshape(1, -1)
 
-    if model == "SupportVectorClassifier":
-        svm_model = ml_models.supportVector_model()
-        svm_model.fit(X, y)
-        predict = svm_model.predict(df)
-        proba = svm_model.predict_proba(df)
-    elif model == "LogisticRegressionClassifier":
-        log_model = ml_models.logisticRegression_model()
-        log_model.fit(X, y)
-        predict = log_model.predict(df)
-        proba = log_model.predict_proba(df)
-    elif model == "RandomForestClassifier":
-        ran_model = ml_models.randomForest_model()
-        ran_model.fit(X, y)
-        predict = ran_model.predict(df)
-        proba = ran_model.predict_proba(df)
-    elif model == "DecisionTreeClassifier":
-        dt_model = ml_models.decisionTree_model()
-        dt_model.fit(X, y)
-        predict = dt_model.predict(df)
-        proba = dt_model.predict_proba(df)
-    elif model == "NeuralNetwork":
-        nn_model = ml_models.neuralNetwork_model()
-        nn_model.fit(X, y, epochs=50, batch_size=1, verbose=0)
-        predict = nn_model.predict(df)[0]
-    elif model == "KNeighborsClassifier":
-        kn_model = ml_models.kNeighbors_model()
-        kn_model.fit(X, y)
-        predict = kn_model.predict(df)
-        proba = kn_model.predict_proba(df)
-    elif model == "VotingClassifier":
-        vot_model = ml_models.voting_model()
-        vot_model.fit(X, y)
-        predict = vot_model.predict(df)
-        proba = vot_model.predict_proba(df)
+    df = scale.transform(df)
 
-    st.write(f"**Output:** {status[round(predict[0])]}")
+    svc_model = ml_models.supportVector_model()
+    ran_model = ml_models.randomForest_model()
+    stacking_model = ml_models.stacking_model()
+    voting_model = ml_models.voting_model()
+    models = [svc_model, ran_model, stacking_model, voting_model]
+    model_names = ["SupportVectorClassifier", "RandomForestClassifier",
+                   "StackingClassifier", "VotingClassifier"]
+
+    model_probabilities = {}
+    model_predictions = {}
+    for index, model in enumerate(models):
+        model.fit(X, y)
+        predict = model.predict(df)
+        proba = model.predict_proba(df)
+        model_probabilities[model_names[index]] = round(
+            proba[0][round(predict[0])], 4) * 100
+        model_predictions[model_names[index]] = status[round(predict[0])]
+
+    best_model = max(model_probabilities, key=model_probabilities.get)
+
+    st.write("**Predictions**")
+    st.write(pd.DataFrame(model_predictions, index=["Prediction"]))
+    with st.beta_expander("Confidence Chart"):
+        st.dataframe(pd.DataFrame(model_probabilities, index=["Confidence"]))
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax = plt.bar(model_names,
+                     model_probabilities.values(), color="y", label="str")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+
+    best_model = max(model_probabilities, key=model_probabilities.get)
+    st.write(f"**Output:** {model_predictions[best_model]}")
     st.write(
-        f"{model}'s confidence on the prediction is {round(proba[0][round(predict[0])], 4) * 100}%")
-    st.write(proba)
+        f"{best_model} has the highest confidence on the prediction with {model_probabilities[best_model]}%")
