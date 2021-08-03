@@ -35,6 +35,7 @@ X = scale.transform(X)
 # Display the dataset
 with st.beta_expander("Data Frame Preview"):
     st.dataframe(df_data.loc[36:46, :].set_index("name"))
+    st.write("See the [csv](https://github.com/meganjacob/CodeDay-Labs-Web-App/blob/main/web-application/parkinsons.csv) input file")
 
 # Parameter descriptions
 st.subheader("**Parameter Descriptions**")
@@ -138,3 +139,10 @@ if changes:
     st.write(f"**Output:** {model_predictions[best_model]}")
     st.write(
         f"{best_model} has the highest confidence on the prediction with {model_probabilities[best_model]}%")
+
+st.write("#")
+
+st.subheader("**About This App**")
+st.write("This project is a part of **CodeDay Program**. Led by [Megan Jacob](https://github.com/meganjacob), and built by [Yusa Kaya](https://github.com/mrbonabane), [Josh Tagle](https://github.com/JWizard05), [Ananya Unnikrishnan](https://github.com/s-aunnikrishnan).")
+st.write(
+    "See the project in the [Github](https://github.com/meganjacob/CodeDay-Labs-Web-App)")
